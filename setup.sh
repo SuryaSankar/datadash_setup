@@ -1,15 +1,16 @@
 #!/bin/bash
 set -x #echo on
-
+sudo apt-get update
 echo "Enter the user name for the administrator. This should be the same as the github user you are going to use"
 read adminuser
 adduser $adminuser
 usermod -aG sudo $adminuser
-cd /opt
+
+if [ ! -f /opt/anaconda3/bin/conda ]; then
 wget https://repo.continuum.io/archive/Anaconda3-2018.12-Linux-x86_64.sh
 bash Anaconda3-2018.12-Linux-x86_64.sh
 rm Anaconda3-2018.12-Linux-x86_64.sh
-cd -
+fi
 
 sudo apt-get -y install python3-pip
 sudo apt-get -y install npm nodejs
@@ -76,13 +77,15 @@ server {
 EOM
 sudo ln -s /etc/nginx/sites-available/$jupyterhubdomain.conf /etc/nginx/sites-enabled/
 
+conda_bin=`whereis conda | sed  's/conda: //g'| sed  's/\/conda//g'`
+
 cat <<EOM > /lib/systemd/system/jupyterhub.service
 [Unit]
 Description=Jupyterhub
 
 [Service]
 User=root
-Environment="PATH=/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/opt/anaconda3/bin"
+Environment="PATH=/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:$conda_bin"
 ExecStart=/usr/local/bin/jupyterhub -f /home/$adminuser/$reponame/jupyterhub_config.py
 
 [Install]
