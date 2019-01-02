@@ -3,8 +3,8 @@ set -x #echo on
 
 echo "Enter the user name for the administrator. This should be the same as the github user you are going to use"
 read adminuser
-sudo adduser $adminuser
-sudo usermod -aG sudo $adminuser
+adduser $adminuser
+usermod -aG sudo $adminuser
 cd /opt
 wget https://repo.continuum.io/archive/Anaconda3-2018.12-Linux-x86_64.sh
 bash Anaconda3-2018.12-Linux-x86_64.sh
