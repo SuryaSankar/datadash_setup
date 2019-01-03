@@ -16,6 +16,8 @@ sudo apt-get -y install python3-pip
 sudo apt-get -y install npm nodejs
 sudo npm install -g configurable-http-proxy
 sudo pip3 install --upgrade setuptools six
+sudo pip3 install wheel
+
 sudo pip3 install --upgrade jupyter jupyterhub jupyterlab oauthenticator Nikola[extras]
 sudo pip3 install --upgrade numpy scipy matplotlib pandas sympy nose
 sudo pip3 install --upgrade Jinja2 packaging pillow python-dateutil PyYAML
@@ -27,14 +29,6 @@ sudo pip3 install --upgrade sqlalchemy tornado bokeh
 # sudo pip3 install --upgrade jupyterlab
 # sudo pip3 install --upgrade oauthenticator
 # sudo pip3 install --upgrade Nikola[extras]
-Jinja2 >=2.7
-numpy >=1.7.1
-packaging >=16.8
-pillow >=4.0
-python-dateutil >=2.1
-PyYAML >=3.10
-six >=1.5.2
-tornado >=4.3
 
 jupyter labextension install @jupyterlab/git
 pip3 install jupyterlab-git
