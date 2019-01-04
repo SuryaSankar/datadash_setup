@@ -32,7 +32,7 @@ sudo pip3 install --upgrade sqlalchemy tornado bokeh
 
 jupyter labextension install @jupyterlab/git
 pip3 install jupyterlab-git
-jupyter serverextension enable --py jupyterlab_git
+jupyter serverextension enable --py --system jupyterlab_git
 
 jupyter labextension install @jupyterlab/hub-extension
 
@@ -45,39 +45,40 @@ sudo apt-get install nginx
 
 echo Enter the fully qualified domain name to use for the data blog
 read blogdomain
-echo Enter the fully qualified domain name to use for the jupyterhub dashboard
-read jupyterhubdomain
+
 
 openssl req -x509 -nodes -newkey rsa:4096 -keyout ${blogdomain}.key -out ${blogdomain}_cert.pem -days 365
-mkdir -p /etc/ssl/private/$blogdomain
-mv $blogdomain_cert.pem $blogdomain.key /etc/ssl/private/$blogdomain/
+mkdir -p /etc/ssl/private/${blogdomain}
+mv ${blogdomain}_cert.pem ${blogdomain}.key /etc/ssl/private/${blogdomain}/
 
-openssl req -x509 -nodes -newkey rsa:4096 -keyout ${jupyterhubdomain}.key -out ${jupyterhubdomain}_cert.pem -days 365
-mkdir -p /etc/ssl/private/$jupyterhubdomain
-mv $jupyterhubdomain_cert.pem $jupyterhubdomain.key /etc/ssl/private/$jupyterhubdomain/
-
-cat <<EOM > /etc/nginx/sites-available/$blogdomain.conf
+cat <<EOM > /etc/nginx/sites-available/${blogdomain}.conf
 server {
     listen 80;
     listen 443 ssl;
     ssl on;
-    ssl_certificate /etc/ssl/private/$blogdomain/${blogdomain}_cert.pem;
-    ssl_certificate_key /etc/ssl/private/$blogdomain/$blogdomain.key;
-    server_name $blogdomain;
+    ssl_certificate /etc/ssl/private/${blogdomain}/${blogdomain}_cert.pem;
+    ssl_certificate_key /etc/ssl/private/${blogdomain}/${blogdomain}.key;
+    server_name ${blogdomain};
     root /home/$adminuser/$reponame/output;
 }
 EOM
-sudo ln -s /etc/nginx/sites-available/$blogdomain.conf /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/${blogdomain}.conf /etc/nginx/sites-enabled/
 
+echo Enter the fully qualified domain name to use for the jupyterhub dashboard
+read jupyterhubdomain
 
-cat <<EOM > /etc/nginx/sites-available/$jupyterhubdomain.conf
+openssl req -x509 -nodes -newkey rsa:4096 -keyout ${jupyterhubdomain}.key -out ${jupyterhubdomain}_cert.pem -days 365
+mkdir -p /etc/ssl/private/${jupyterhubdomain}
+mv ${jupyterhubdomain}_cert.pem ${jupyterhubdomain}.key /etc/ssl/private/${jupyterhubdomain}/
+
+cat <<EOM > /etc/nginx/sites-available/${jupyterhubdomain}.conf
 server {
     listen 80;
     listen 443 ssl;
     ssl on;
-    ssl_certificate /etc/ssl/private/$jupyterhubdomain/${jupyterhubdomain}_cert.pem;
-    ssl_certificate_key /etc/ssl/private/$jupyterhubdomain/$jupyterhubdomain.key;
-    server_name $jupyterhubdomain;
+    ssl_certificate /etc/ssl/private/${jupyterhubdomain}/${jupyterhubdomain}_cert.pem;
+    ssl_certificate_key /etc/ssl/private/${jupyterhubdomain}/${jupyterhubdomain}.key;
+    server_name ${jupyterhubdomain};
 
     location / {
         proxy_pass https://127.0.0.1:8000;
@@ -89,9 +90,9 @@ server {
     }
 }
 EOM
-sudo ln -s /etc/nginx/sites-available/$jupyterhubdomain.conf /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/${jupyterhubdomain}.conf /etc/nginx/sites-enabled/
 
-conda_bin=`whereis conda | sed  's/conda: //g'| sed  's/\/conda//g'`
+# conda_bin=`whereis conda | sed  's/conda: //g'| sed  's/\/conda//g'`
 
 cat <<EOM > /lib/systemd/system/jupyterhub.service
 [Unit]
@@ -109,6 +110,7 @@ EOM
 sudo ln -s /lib/systemd/system/jupyterhub.service /etc/systemd/system/jupyterhub.service
 
 nikola init $reponame
+nikola build
 
 cd $reponame
 jupyterhub --generate-config
@@ -120,12 +122,12 @@ read github_client_secret
 cat <<EOM >> jupyterhub_config.py
 c.JupyterHub.admin_users = {'$adminuser'}
 c.JupyterHub.authenticator_class = 'oauthenticator.GitHubOAuthenticator'
-c.GitHubOAuthenticator.oauth_callback_url = 'https://$jupyterhubdomain/hub/oauth_callback'
+c.GitHubOAuthenticator.oauth_callback_url = 'https://${jupyterhubdomain}/hub/oauth_callback'
 c.GitHubOAuthenticator.client_id = '${github_client_id}'
 c.GitHubOAuthenticator.client_secret = '${github_client_secret}'
 c.JupyterHub.proxy_cmd = ['/usr/local/bin/configurable-http-proxy']
-c.JupyterHub.ssl_cert = '/etc/ssl/private/$jupyterhubdomain/${jupyterhubdomain}_cert.pem'
-c.JupyterHub.ssl_key = '/etc/ssl/private/$jupyterhubdomain/$jupyterhubdomain.key'
+c.JupyterHub.ssl_cert = '/etc/ssl/private/${jupyterhubdomain}/${jupyterhubdomain}_cert.pem'
+c.JupyterHub.ssl_key = '/etc/ssl/private/${jupyterhubdomain}/${jupyterhubdomain}.key'
 c.Spawner.notebook_dir = '~/$reponame'
 c.Authenticator.whitelist = {'$adminuser'}
 c.LocalAuthenticator.create_system_users = True
@@ -146,7 +148,6 @@ sudo systemctl enable jupyterhub.service
 sudo service nginx restart
 
 
-su $adminuser
 cd /home/$adminuser
 mkdir -p /home/$adminuser/.ssh
 
