@@ -168,7 +168,7 @@ ssh-add ~/.ssh/id_rsa
 
 echo "Copy the following ssh key to your github account (Refer https://help.github.com/articles/adding-a-new-ssh-key-to-your-github-account/ )"
 sshkey = `cat ~/.ssh/id_rsa.pub`
-curl -u $adminuser https://api.github.com/user/repos -d "{\"name\":\"Techonometrics DO 2\", \"key\":\"$sshkey\"}"
+curl -u $adminuser https://api.github.com/user/keys -d "{\"name\":\"Techonometrics DO 2\", \"key\":\"$sshkey\"}"
 
 cd /home/$adminuser/$reponame
 git init
