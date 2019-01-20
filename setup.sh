@@ -37,7 +37,6 @@ jupyter serverextension enable --py --system jupyterlab_git
 
 jupyter labextension install @jupyterlab/hub-extension
 
-cd /home/$adminuser
 echo Enter the name that you want to give your data dashboard folder
 read reponame
 
@@ -110,10 +109,14 @@ EOM
 
 sudo ln -s /lib/systemd/system/jupyterhub.service /etc/systemd/system/jupyterhub.service
 
+sudo su $adminuser <<EOF
+
+cd /home/$adminuser
 nikola init $reponame
-nikola build
 
 cd $reponame
+
+nikola build
 
 echo Enter the github oauth client_id
 read github_client_id
@@ -141,16 +144,20 @@ cat <<EOM > .gitignore
 *.pid
 *.sqlite
 jupyterhub_cookie_secret
+.ipynb_checkpoints/
+__pycache__/
+cache/
+.doit.db
 EOM
 cd -
-
+EOF
 
 sudo systemctl daemon-reload
 sudo systemctl start
 sudo systemctl enable jupyterhub.service
 sudo service nginx restart
 
-
+sudo su $adminuser <<EOF
 cd /home/$adminuser
 mkdir -p /home/$adminuser/.ssh
 
@@ -160,9 +167,8 @@ ssh-keygen -t rsa -b 4096 -C $adminuser_email
 ssh-add ~/.ssh/id_rsa
 
 echo "Copy the following ssh key to your github account (Refer https://help.github.com/articles/adding-a-new-ssh-key-to-your-github-account/ )"
-cat ~/.ssh/id_rsa.pub
-echo "Press Enter if you have added it to your github account"
-read enter
+sshkey = `cat ~/.ssh/id_rsa.pub`
+curl -u $adminuser https://api.github.com/user/repos -d "{\"name\":\"Techonometrics DO 2\", \"key\":\"$sshkey\"}"
 
 cd /home/$adminuser/$reponame
 git init
@@ -171,10 +177,11 @@ git add -A
 git commit -am "Finished initial auto setup"
 
 
-# curl -u $adminuser https://api.github.com/user/repos -d "{\"name\":\"$reponame\"}"
+curl -u $adminuser https://api.github.com/user/repos -d "{\"name\":\"$reponame\"}"
 
-# git remote add origin "https://github.com/$adminuser/$reponame.git"
-# git push -u origin master
+git remote add origin "https://github.com/$adminuser/$reponame.git"
+git push -u origin master
+EOF
 
 echo "SUCCESS"
 
