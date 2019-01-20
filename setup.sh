@@ -109,7 +109,6 @@ EOM
 
 sudo ln -s /lib/systemd/system/jupyterhub.service /etc/systemd/system/jupyterhub.service
 
-sudo su $adminuser <<EOF
 
 cd /home/$adminuser
 nikola init $reponame
@@ -122,7 +121,7 @@ echo Enter the github oauth client_id
 read github_client_id
 echo Enter the github oauth client_secret
 read github_client_secret
-cat <<EOM > jupyterhub_config.py
+sudo -H -u $adminuser cat <<EOM > jupyterhub_config.py
 c.JupyterHub.admin_users = {'$adminuser'}
 c.JupyterHub.authenticator_class = 'oauthenticator.GitHubOAuthenticator'
 c.GitHubOAuthenticator.oauth_callback_url = 'https://${jupyterhubdomain}/hub/oauth_callback'
@@ -150,38 +149,37 @@ cache/
 .doit.db
 EOM
 cd -
-EOF
+
+sudo chmod -R $adminuser:$adminuser /home/$adminuser/$reponame
+
 
 sudo systemctl daemon-reload
 sudo systemctl start
 sudo systemctl enable jupyterhub.service
 sudo service nginx restart
 
-sudo su $adminuser <<EOF
 cd /home/$adminuser
 mkdir -p /home/$adminuser/.ssh
 
 echo Enter the email associated with your github account
 read adminuser_email
-ssh-keygen -t rsa -b 4096 -C $adminuser_email
-ssh-add ~/.ssh/id_rsa
+sudo -H -u $adminuser ssh-keygen -t rsa -b 4096 -C $adminuser_email
+sudo -H -u $adminuser ssh-add ~/.ssh/id_rsa
 
-echo "Copy the following ssh key to your github account (Refer https://help.github.com/articles/adding-a-new-ssh-key-to-your-github-account/ )"
-sshkey = `cat ~/.ssh/id_rsa.pub`
-curl -u $adminuser https://api.github.com/user/keys -d "{\"name\":\"Techonometrics DO 2\", \"key\":\"$sshkey\"}"
+sshkey=`sudo -H -u $adminuser cat /home/$adminuser/.ssh/id_rsa.pub`
+curl -u $adminuser https://api.github.com/user/keys -d "{\"title\":\"${blogdomain}\", \"key\":\"$sshkey\"}"
 
 cd /home/$adminuser/$reponame
-git init
-git config user.email $adminuser_email
-git add -A
-git commit -am "Finished initial auto setup"
+sudo -H -u $adminuser git init
+sudo -H -u $adminuser git config user.email $adminuser_email
+sudo -H -u $adminuser git add -A
+sudo -H -u $adminuser git commit -am "Finished initial auto setup"
 
 
 curl -u $adminuser https://api.github.com/user/repos -d "{\"name\":\"$reponame\"}"
 
-git remote add origin "https://github.com/$adminuser/$reponame.git"
-git push -u origin master
-EOF
+sudo -H -u $adminuser git remote add origin "https://github.com/$adminuser/$reponame.git"
+sudo -H -u $adminuser git push -u origin master
 
 echo "SUCCESS"
 
