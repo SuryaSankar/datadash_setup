@@ -14,6 +14,7 @@ sudo usermod -aG sudo $adminuser
 
 sudo apt-get -y install python3-pip
 sudo apt-get -y install npm nodejs
+sudo apt-get install python3-dev libmysqlclient-dev
 sudo npm install -g configurable-http-proxy
 sudo pip3 install --upgrade setuptools six
 sudo pip3 install wheel
@@ -22,7 +23,8 @@ sudo pip3 install --upgrade jupyter jupyterhub jupyterlab oauthenticator Nikola[
 sudo pip3 install --upgrade numpy scipy matplotlib pandas sympy nose
 sudo pip3 install --upgrade Jinja2 packaging pillow python-dateutil PyYAML
 sudo pip3 install --upgrade sqlalchemy tornado bokeh
-
+sudo pip3 install --upgrade mysqlclient
+sudo pip3 install --upgrade voila
 # sudo pip3 install --upgrade jupyter
 # sudo pip3 install --upgrade jupyterhub
 # # sudo pip3 install --upgrade notebook
@@ -113,13 +115,12 @@ nikola init $reponame
 nikola build
 
 cd $reponame
-jupyterhub --generate-config
 
 echo Enter the github oauth client_id
 read github_client_id
 echo Enter the github oauth client_secret
 read github_client_secret
-cat <<EOM >> jupyterhub_config.py
+cat <<EOM > jupyterhub_config.py
 c.JupyterHub.admin_users = {'$adminuser'}
 c.JupyterHub.authenticator_class = 'oauthenticator.GitHubOAuthenticator'
 c.GitHubOAuthenticator.oauth_callback_url = 'https://${jupyterhubdomain}/hub/oauth_callback'
@@ -133,6 +134,9 @@ c.Authenticator.whitelist = {'$adminuser'}
 c.LocalAuthenticator.create_system_users = True
 c.JupyterHub.ip = '127.0.0.1'
 c.Spawner.default_url = '/lab'
+c.JupyterHub.log_level = 'DEBUG'
+c.Spawner.debug = True
+c.LocalProcessSpawner.debug = True
 EOM
 cat <<EOM > .gitignore
 *.pid
