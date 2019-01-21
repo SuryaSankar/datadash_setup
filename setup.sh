@@ -150,7 +150,7 @@ cache/
 EOM
 cd -
 
-sudo chmod -R $adminuser:$adminuser /home/$adminuser/$reponame
+sudo chown -R $adminuser:$adminuser /home/$adminuser/$reponame
 
 
 sudo systemctl daemon-reload
