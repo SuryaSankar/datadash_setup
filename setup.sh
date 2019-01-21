@@ -227,7 +227,6 @@ sudo chown -R $username:$username /home/$username/$reponame
 
 
 sudo systemctl daemon-reload
-sudo systemctl start
 sudo systemctl enable jupyterhub.service
 sudo service nginx restart
 
@@ -253,6 +252,8 @@ curl -u $username https://api.github.com/user/repos -d "{\"name\":\"$reponame\"}
 
 sudo -H -u $username git remote add origin "https://github.com/$username/$reponame.git"
 sudo -H -u $username git push -u origin master
+
+sudo systemctl start jupyterhub.service
 
 echo "SUCCESS"
 
