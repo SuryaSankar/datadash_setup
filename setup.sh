@@ -1,10 +1,83 @@
 #!/bin/bash
 set -x #echo on
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+
+
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            show_help    # Display a usage synopsis.
+            exit
+            ;;
+        --username=?*)
+            username=${1#*=} # Delete everything up to "=" and assign the remainder.
+            ;;
+        --username=)         # Handle the case of an empty --file=
+            die 'ERROR: "--username" requires a non-empty option argument.'
+            ;;
+        --reponame=?*)
+            reponame=${1#*=} # Delete everything up to "=" and assign the remainder.
+            ;;
+        --reponame=)         # Handle the case of an empty --file=
+            die 'ERROR: "--reponame" requires a non-empty option argument.'
+            ;;
+        --blogdomain=?*)
+            blogdomain=${1#*=} # Delete everything up to "=" and assign the remainder.
+            ;;
+        --blogdomain=)         # Handle the case of an empty --file=
+            die 'ERROR: "--blogdomain" requires a non-empty option argument.'
+            ;;
+        --jupyterhubdomain=?*)
+            jupyterhubdomain=${1#*=} # Delete everything up to "=" and assign the remainder.
+            ;;
+        --jupyterhubdomain=)         # Handle the case of an empty --file=
+            die 'ERROR: "--jupyterhubdomain" requires a non-empty option argument.'
+            ;;
+        --use_github_auth)
+			use_github_auth=true
+            ;;
+        --github_client_id=?*)
+            github_client_id=${1#*=} # Delete everything up to "=" and assign the remainder.
+            ;;
+        --github_client_id=)         # Handle the case of an empty --file=
+            die 'ERROR: "--github_client_id" requires a non-empty option argument.'
+            ;;
+        --github_client_secret=?*)
+            github_client_secret=${1#*=} # Delete everything up to "=" and assign the remainder.
+            ;;
+        --github_client_secret=)         # Handle the case of an empty --file=
+            die 'ERROR: "--github_client_secret" requires a non-empty option argument.'
+            ;;
+        --github_email=?*)
+            github_email=${1#*=} # Delete everything up to "=" and assign the remainder.
+            ;;
+        --github_email=)         # Handle the case of an empty --file=
+            die 'ERROR: "--github_email" requires a non-empty option argument.'
+            ;;
+        --)              # End of all options.
+            shift
+            break
+            ;;
+        -?*)
+            printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+            ;;
+        *)               # Default case: No more options, so break out of the loop.
+            break
+    esac
+
+    shift
+done
+
+
 sudo apt-get update
-echo "Enter the user name for the administrator. This should be the same as the github user you are going to use"
-read adminuser
-sudo adduser $adminuser
-sudo usermod -aG sudo $adminuser
+# echo "Enter the user name for the administrator. This should be the same as the github user you are going to use"
+# read username
+sudo adduser $username
+sudo usermod -aG sudo $username
 # if [ ! -f /opt/anaconda3/bin/conda ]; then
 # 	wget https://repo.continuum.io/archive/Anaconda3-2018.12-Linux-x86_64.sh
 # 	sudo bash Anaconda3-2018.12-Linux-x86_64.sh
@@ -37,17 +110,17 @@ jupyter serverextension enable --py --system jupyterlab_git
 
 jupyter labextension install @jupyterlab/hub-extension
 
-echo Enter the name that you want to give your data dashboard folder
-read reponame
+# echo Enter the name that you want to give your data dashboard folder
+# read reponame
 
 
 sudo apt-get install nginx
 
-echo Enter the fully qualified domain name to use for the data blog
-read blogdomain
+# echo Enter the fully qualified domain name to use for the data blog
+# read blogdomain
 
 
-openssl req -x509 -nodes -newkey rsa:4096 -keyout ${blogdomain}.key -out ${blogdomain}_cert.pem -days 365
+openssl req -x509 -nodes -newkey rsa:4096 -keyout ${blogdomain}.key -out ${blogdomain}_cert.pem -days 365 -subj '/CN=${blogdomain}'
 mkdir -p /etc/ssl/private/${blogdomain}
 mv ${blogdomain}_cert.pem ${blogdomain}.key /etc/ssl/private/${blogdomain}/
 
@@ -59,15 +132,15 @@ server {
     ssl_certificate /etc/ssl/private/${blogdomain}/${blogdomain}_cert.pem;
     ssl_certificate_key /etc/ssl/private/${blogdomain}/${blogdomain}.key;
     server_name ${blogdomain};
-    root /home/$adminuser/$reponame/output;
+    root /home/$username/$reponame/output;
 }
 EOM
 sudo ln -s /etc/nginx/sites-available/${blogdomain}.conf /etc/nginx/sites-enabled/
 
-echo Enter the fully qualified domain name to use for the jupyterhub dashboard
-read jupyterhubdomain
+# echo Enter the fully qualified domain name to use for the jupyterhub dashboard
+# read jupyterhubdomain
 
-openssl req -x509 -nodes -newkey rsa:4096 -keyout ${jupyterhubdomain}.key -out ${jupyterhubdomain}_cert.pem -days 365
+openssl req -x509 -nodes -newkey rsa:4096 -keyout ${jupyterhubdomain}.key -out ${jupyterhubdomain}_cert.pem -days 365 -subj '/CN=${jupyterhubdomain}'
 mkdir -p /etc/ssl/private/${jupyterhubdomain}
 mv ${jupyterhubdomain}_cert.pem ${jupyterhubdomain}.key /etc/ssl/private/${jupyterhubdomain}/
 
@@ -101,7 +174,7 @@ Description=Jupyterhub
 [Service]
 User=root
 Environment="PATH=/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
-ExecStart=/usr/local/bin/jupyterhub -f /home/$adminuser/$reponame/jupyterhub_config.py
+ExecStart=/usr/local/bin/jupyterhub -f /home/$username/$reponame/jupyterhub_config.py
 
 [Install]
 WantedBy=multi-user.target
@@ -110,19 +183,19 @@ EOM
 sudo ln -s /lib/systemd/system/jupyterhub.service /etc/systemd/system/jupyterhub.service
 
 
-cd /home/$adminuser
+cd /home/$username
 nikola init $reponame
 
 cd $reponame
 
 nikola build
 
-echo Enter the github oauth client_id
-read github_client_id
-echo Enter the github oauth client_secret
-read github_client_secret
-sudo -H -u $adminuser cat <<EOM > jupyterhub_config.py
-c.JupyterHub.admin_users = {'$adminuser'}
+# echo Enter the github oauth client_id
+# read github_client_id
+# echo Enter the github oauth client_secret
+# read github_client_secret
+sudo -H -u $username cat <<EOM > jupyterhub_config.py
+c.JupyterHub.admin_users = {'$username'}
 c.JupyterHub.authenticator_class = 'oauthenticator.GitHubOAuthenticator'
 c.GitHubOAuthenticator.oauth_callback_url = 'https://${jupyterhubdomain}/hub/oauth_callback'
 c.GitHubOAuthenticator.client_id = '${github_client_id}'
@@ -131,7 +204,7 @@ c.JupyterHub.proxy_cmd = ['/usr/local/bin/configurable-http-proxy']
 c.JupyterHub.ssl_cert = '/etc/ssl/private/${jupyterhubdomain}/${jupyterhubdomain}_cert.pem'
 c.JupyterHub.ssl_key = '/etc/ssl/private/${jupyterhubdomain}/${jupyterhubdomain}.key'
 c.Spawner.notebook_dir = '~/$reponame'
-c.Authenticator.whitelist = {'$adminuser'}
+c.Authenticator.whitelist = {'$username'}
 c.LocalAuthenticator.create_system_users = True
 c.JupyterHub.ip = '127.0.0.1'
 c.Spawner.default_url = '/lab'
@@ -150,7 +223,7 @@ cache/
 EOM
 cd -
 
-sudo chown -R $adminuser:$adminuser /home/$adminuser/$reponame
+sudo chown -R $username:$username /home/$username/$reponame
 
 
 sudo systemctl daemon-reload
@@ -158,28 +231,28 @@ sudo systemctl start
 sudo systemctl enable jupyterhub.service
 sudo service nginx restart
 
-cd /home/$adminuser
-mkdir -p /home/$adminuser/.ssh
+cd /home/$username
+mkdir -p /home/$username/.ssh
 
-echo Enter the email associated with your github account
-read adminuser_email
-sudo -H -u $adminuser ssh-keygen -t rsa -b 4096 -C $adminuser_email
-sudo -H -u $adminuser ssh-add ~/.ssh/id_rsa
+# echo Enter the email associated with your github account
+# read github_email
+sudo -H -u $username ssh-keygen -t rsa -b 4096 -C $github_email
+sudo -H -u $username ssh-add ~/.ssh/id_rsa
 
-sshkey=`sudo -H -u $adminuser cat /home/$adminuser/.ssh/id_rsa.pub`
-curl -u $adminuser https://api.github.com/user/keys -d "{\"title\":\"${blogdomain}\", \"key\":\"$sshkey\"}"
+sshkey=`sudo -H -u $username cat /home/$username/.ssh/id_rsa.pub`
+curl -u $username https://api.github.com/user/keys -d "{\"title\":\"${blogdomain}\", \"key\":\"$sshkey\"}"
 
-cd /home/$adminuser/$reponame
-sudo -H -u $adminuser git init
-sudo -H -u $adminuser git config user.email $adminuser_email
-sudo -H -u $adminuser git add -A
-sudo -H -u $adminuser git commit -am "Finished initial auto setup"
+cd /home/$username/$reponame
+sudo -H -u $username git init
+sudo -H -u $username git config user.email $github_email
+sudo -H -u $username git add -A
+sudo -H -u $username git commit -am "Finished initial auto setup"
 
 
-curl -u $adminuser https://api.github.com/user/repos -d "{\"name\":\"$reponame\"}"
+curl -u $username https://api.github.com/user/repos -d "{\"name\":\"$reponame\"}"
 
-sudo -H -u $adminuser git remote add origin "https://github.com/$adminuser/$reponame.git"
-sudo -H -u $adminuser git push -u origin master
+sudo -H -u $username git remote add origin "https://github.com/$username/$reponame.git"
+sudo -H -u $username git push -u origin master
 
 echo "SUCCESS"
 
